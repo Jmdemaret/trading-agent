@@ -38,7 +38,16 @@ npm run dev
 
 L'interface web sera accessible à l'adresse indiquée par Vite (généralement `http://localhost:5173`).
 
-## 3. (Optionnel) Script de Notification Standalone
+## 3. Lancer l'application facilement sous Windows
+
+Si vous êtes sous Windows, vous pouvez simplement double-cliquer sur le fichier `start.bat` à la racine du projet.
+Il ouvrira automatiquement deux terminaux : un pour lancer l'API Python et un pour le frontend React.
+
+### ⚠️ Dépannage: Erreur `ECONNREFUSED 127.0.0.1:8000`
+Si vous voyez cette erreur dans le terminal de Vite (frontend), **cela signifie que votre Backend Python n'est pas allumé.**
+Assurez-vous d'avoir exécuté la commande de l'étape 1 (`python backend/api.py`), ou utilisez simplement le script `start.bat`.
+
+## 4. (Optionnel) Script de Notification Standalone
 
 Vous pouvez toujours exécuter le démon d'analyse en arrière-plan qui enverra des alertes Telegram :
 ```bash
