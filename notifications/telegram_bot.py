@@ -6,10 +6,17 @@ class TelegramNotifier:
     def __init__(self, token: str = None, chat_id: str = None):
         """
         Initialise le bot Telegram.
-        Si token ou chat_id ne sont pas fournis, on essaie de les lire depuis les variables d'environnement.
+        Si token ou chat_id ne sont pas fournis, on essaie de les lire depuis config.json
+        puis depuis les variables d'environnement.
         """
-        self.token = token or os.environ.get("TELEGRAM_BOT_TOKEN")
-        self.chat_id = chat_id or os.environ.get("TELEGRAM_CHAT_ID")
+        import sys
+        import os
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from backend.config_manager import config_manager
+
+        cfg = config_manager.get_telegram_config()
+        self.token = token or cfg.get("token") or os.environ.get("TELEGRAM_BOT_TOKEN")
+        self.chat_id = chat_id or cfg.get("chat_id") or os.environ.get("TELEGRAM_CHAT_ID")
 
         if self.token:
             self.bot = Bot(token=self.token)

@@ -72,13 +72,29 @@ class TradingAgent:
         data['SMA_short'] = data['Close'].rolling(window=self.short_window).mean()
         data['SMA_long'] = data['Close'].rolling(window=self.long_window).mean()
 
+        # Calcul du RSI (Relative Strength Index)
+        delta = data['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        data['RSI'] = 100 - (100 / (1 + rs))
+
         last_price = data['Close'].iloc[-1]
         last_sma_short = data['SMA_short'].iloc[-1]
         last_sma_long = data['SMA_long'].iloc[-1]
+        last_rsi = data['RSI'].iloc[-1] if not data['RSI'].empty else 50
 
-        # Signal Technique basique (Croisement de moyennes mobiles)
+        # Signal Technique basique (Croisement de moyennes mobiles & RSI)
         tech_signal = "HOLD"
-        if last_sma_short > last_sma_long:
+        rsi_reason = f"RSI: {last_rsi:.2f} (Neutre)"
+
+        if last_rsi < 30:
+            tech_signal = "STRONG BUY"
+            rsi_reason = f"RSI: {last_rsi:.2f} (Survendu - Opportunité d'achat imminente !)"
+        elif last_rsi > 70:
+            tech_signal = "STRONG SELL"
+            rsi_reason = f"RSI: {last_rsi:.2f} (Suracheté - L'action atteint un PEAK, pensez à vendre !)"
+        elif last_sma_short > last_sma_long:
             tech_signal = "BUY"
         elif last_sma_short < last_sma_long:
             tech_signal = "SELL"
@@ -111,6 +127,7 @@ class TradingAgent:
             confidence = "Moyenne"
 
         reason = (f"Prix actuel: ${last_price:.2f}. "
+                  f"{rsi_reason}. "
                   f"Signal Tech (SMA): {tech_signal}. "
                   f"Sentiment News (Score: {sentiment_score:.2f}): {fund_signal}. "
                   f"Dernière News: '{latest_news}'")

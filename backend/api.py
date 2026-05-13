@@ -21,17 +21,75 @@ app.add_middleware(
 
 agent = TradingAgent()
 
-# Modèle de données fictif de portefeuille
-PORTFOLIO_DB = [
-    {"ticker": "AAPL", "quantity": 50, "buyPrice": 150.0},
-    {"ticker": "MSFT", "quantity": 30, "buyPrice": 300.0},
-    {"ticker": "TSLA", "quantity": 20, "buyPrice": 200.0},
-    {"ticker": "GOOGL", "quantity": 40, "buyPrice": 120.0}
-]
+from backend.config_manager import config_manager
+import yfinance as yf
+
+class PortfolioItem(BaseModel):
+    ticker: str
+    quantity: float
+    buyPrice: float
+
+class TelegramSettings(BaseModel):
+    token: str
+    chat_id: str
 
 @app.get("/api/portfolio")
 def get_portfolio():
-    return {"portfolio": PORTFOLIO_DB}
+    return {"portfolio": config_manager.get_portfolio()}
+
+@app.post("/api/portfolio")
+def add_portfolio_item(item: PortfolioItem):
+    config_manager.add_to_portfolio(item.dict())
+    return {"status": "success", "portfolio": config_manager.get_portfolio()}
+
+@app.delete("/api/portfolio/{ticker}")
+def remove_portfolio_item(ticker: str):
+    config_manager.remove_from_portfolio(ticker)
+    return {"status": "success", "portfolio": config_manager.get_portfolio()}
+
+@app.get("/api/portfolio/live")
+def get_portfolio_live():
+    portfolio = config_manager.get_portfolio()
+    live_data = []
+
+    for item in portfolio:
+        ticker = item["ticker"]
+        try:
+            stock = yf.Ticker(ticker)
+            # Récupérer les données du jour et du jour précédent pour le changement
+            hist = stock.history(period="5d")
+            if not hist.empty and len(hist) >= 2:
+                current_price = hist['Close'].iloc[-1]
+                prev_price = hist['Close'].iloc[-2]
+                change_percent = ((current_price - prev_price) / prev_price) * 100
+            else:
+                current_price = item["buyPrice"]
+                change_percent = 0.0
+
+        except Exception:
+            current_price = item["buyPrice"]
+            change_percent = 0.0
+
+        live_data.append({
+            "ticker": ticker,
+            "quantity": item["quantity"],
+            "buyPrice": item["buyPrice"],
+            "currentPrice": current_price,
+            "changePercent": change_percent,
+            "totalValue": current_price * item["quantity"],
+            "profit": (current_price - item["buyPrice"]) * item["quantity"]
+        })
+
+    return {"live_portfolio": live_data}
+
+@app.get("/api/settings")
+def get_settings():
+    return config_manager.get_telegram_config()
+
+@app.post("/api/settings")
+def update_settings(settings: TelegramSettings):
+    config_manager.set_telegram_config(settings.token, settings.chat_id)
+    return {"status": "success"}
 
 @app.get("/api/analyze/{ticker}")
 def analyze_ticker(ticker: str):

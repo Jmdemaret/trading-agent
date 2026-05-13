@@ -6,10 +6,16 @@ function Portfolio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    axios.get('/api/portfolio')
+  // Nouveaux états pour le formulaire
+  const [newTicker, setNewTicker] = useState('');
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+
+  const fetchPortfolio = () => {
+    setLoading(true);
+    axios.get('/api/portfolio/live')
       .then(response => {
-        setPortfolio(response.data.portfolio);
+        setPortfolio(response.data.live_portfolio);
         setLoading(false);
       })
       .catch(err => {
@@ -17,30 +23,93 @@ function Portfolio() {
         setError("Impossible de charger le portefeuille.");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchPortfolio();
+    // Rafraîchir toutes les minutes
+    const interval = setInterval(fetchPortfolio, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <p>Chargement du portefeuille...</p>;
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!newTicker || !newQuantity || !newPrice) return;
+
+    try {
+      await axios.post('/api/portfolio', {
+        ticker: newTicker.toUpperCase(),
+        quantity: parseFloat(newQuantity),
+        buyPrice: parseFloat(newPrice)
+      });
+      setNewTicker(''); setNewQuantity(''); setNewPrice('');
+      fetchPortfolio();
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'ajout.");
+    }
+  };
+
+  const handleRemove = async (ticker) => {
+    try {
+      await axios.delete(`/api/portfolio/${ticker}`);
+      fetchPortfolio();
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la suppression.");
+    }
+  };
+
+  if (loading && portfolio.length === 0) return <p>Chargement des données du marché en temps réel...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
     <div>
-      <h2>Votre Portefeuille Actuel</h2>
+      <h2>📊 Votre Portefeuille (Temps Réel)</h2>
+
+      <form onSubmit={handleAdd} style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px' }}>
+        <input type="text" placeholder="Ticker (ex: AAPL)" value={newTicker} onChange={e => setNewTicker(e.target.value)} required />
+        <input type="number" placeholder="Quantité" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} required step="0.01" />
+        <input type="number" placeholder="Prix d'achat ($)" value={newPrice} onChange={e => setNewPrice(e.target.value)} required step="0.01" />
+        <button type="submit" style={{ padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Ajouter</button>
+      </form>
+
       <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid #ddd' }}>
-            <th>Ticker</th>
-            <th>Quantité</th>
-            <th>Prix d'Achat ($)</th>
+          <tr style={{ borderBottom: '2px solid #ddd', backgroundColor: '#f1f1f1' }}>
+            <th style={{ padding: '10px' }}>Ticker</th>
+            <th style={{ padding: '10px' }}>Quantité</th>
+            <th style={{ padding: '10px' }}>Prix d'Achat</th>
+            <th style={{ padding: '10px' }}>Prix Actuel</th>
+            <th style={{ padding: '10px' }}>Variation (24h)</th>
+            <th style={{ padding: '10px' }}>Profit/Perte</th>
+            <th style={{ padding: '10px' }}>Action</th>
           </tr>
         </thead>
         <tbody>
-          {portfolio.map((item, index) => (
-            <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
-              <td>{item.ticker}</td>
-              <td>{item.quantity}</td>
-              <td>{item.buyPrice.toFixed(2)}</td>
-            </tr>
-          ))}
+          {portfolio.map((item, index) => {
+             const isPositive = item.changePercent >= 0;
+             const isProfit = item.profit >= 0;
+             return (
+              <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '10px', fontWeight: 'bold' }}>{item.ticker}</td>
+                <td style={{ padding: '10px' }}>{item.quantity}</td>
+                <td style={{ padding: '10px' }}>${item.buyPrice.toFixed(2)}</td>
+                <td style={{ padding: '10px' }}>${item.currentPrice.toFixed(2)}</td>
+                <td style={{ padding: '10px', color: isPositive ? 'green' : 'red', fontWeight: 'bold' }}>
+                  {isPositive ? '▲' : '▼'} {Math.abs(item.changePercent).toFixed(2)}%
+                </td>
+                <td style={{ padding: '10px', color: isProfit ? 'green' : 'red' }}>
+                   ${item.profit.toFixed(2)}
+                </td>
+                <td style={{ padding: '10px' }}>
+                  <button onClick={() => handleRemove(item.ticker)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '3px', cursor: 'pointer' }}>
+                    Supprimer
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -3,13 +3,22 @@ import schedule
 from core.agent import TradingAgent
 from notifications.telegram_bot import TelegramNotifier
 
+from backend.config_manager import config_manager
+
 def job():
     print("Démarrage du scan du marché...")
     agent = TradingAgent()
+
+    # Le notifier charge désormais dynamiquement ses clés depuis config.json
     notifier = TelegramNotifier()
 
-    # Liste d'actifs à surveiller (pourrait être dynamique ou liée à la BDD de l'utilisateur)
-    tickers = ["AAPL", "MSFT", "TSLA", "GOOGL"]
+    # Liste dynamique d'actifs à surveiller
+    portfolio = config_manager.get_portfolio()
+    # On ajoute quelques gros tickers par défaut pour la découverte d'opportunités
+    discovery_tickers = ["NVDA", "AMZN", "META", "BTC-USD"]
+
+    # Fusion sans doublon
+    tickers = list(set([item["ticker"] for item in portfolio] + discovery_tickers))
 
     for ticker in tickers:
         print(f"Analyse de {ticker}...")
@@ -33,13 +42,10 @@ if __name__ == "__main__":
     print("Exécution immédiate du premier scan...")
     job()
 
-    # Planifier l'exécution (par exemple toutes les 4 heures)
-    # schedule.every(4).hours.do(job)
+    # Planifier l'exécution toutes les heures (paramétrable)
+    schedule.every(1).hours.do(job)
 
-    # Pour le test on peut le mettre toutes les minutes
-    # schedule.every(1).minutes.do(job)
-
-    # print("En attente de la prochaine planification...")
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(1)
+    print("Démon en cours : En attente de la prochaine planification...")
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
