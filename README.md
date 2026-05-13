@@ -15,6 +15,9 @@ Ce projet propose un agent expert en trading propulsé par l'IA. Il analyse le m
 ## 1. Lancer le Backend (Python/FastAPI)
 
 ```bash
+# Mettre à jour pip (recommandé, surtout sur Windows)
+python -m pip install --upgrade pip
+
 # Installer les dépendances
 pip install -r requirements.txt
 
