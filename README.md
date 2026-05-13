@@ -1,33 +1,43 @@
-# Agent Expert en Trading
+# Agent Expert en Trading (Fullstack: FastAPI + React)
 
-Ce projet propose un agent expert en trading propulsé par l'IA. Il analyse le marché, trouve des opportunités d'investissement, vous envoie des notifications (ex: Telegram), et fournit un tableau de bord pour suivre votre portefeuille.
+Ce projet propose un agent expert en trading propulsé par l'IA. Il analyse le marché, trouve des opportunités d'investissement, peut envoyer des notifications, et fournit un tableau de bord React interactif pour suivre votre portefeuille.
 
-## Fonctionnalités
+## Architecture
+- `core/` : Logique de l'agent de trading (récupération de données yfinance, analyse sentimentale).
+- `notifications/` : Gestionnaire d'alertes Telegram.
+- `backend/` : Serveur FastAPI exposant les capacités de l'agent via une API REST.
+- `frontend/` : Application web Node.js/React (Vite) affichant le dashboard de suivi.
 
-1. **Analyse de marché**: Utilise les données financières (Yahoo Finance) et l'analyse de sentiment (TextBlob).
-2. **Notifications**: Envoie des propositions d'investissement en temps réel.
-3. **Tableau de bord de portefeuille**: Suivi des performances et recommandations révolutionnaires (Streamlit).
+## Prérequis
+- Python 3.9+
+- Node.js 18+
 
-## Structure
-- `core/`: Logique de l'agent de trading (récupération de données, analyse, génération de signaux).
-- `notifications/`: Gestionnaire d'alertes Telegram.
-- `app/`: Dashboard de suivi du portefeuille Streamlit.
-- `main.py`: Point d'entrée pour lancer le bot de génération de signaux.
-
-## Installation
+## 1. Lancer le Backend (Python/FastAPI)
 
 ```bash
+# Installer les dépendances
 pip install -r requirements.txt
+
+# Lancer le serveur d'API (port 8000 par défaut)
+python backend/api.py
+# (Ou utiliser: uvicorn backend.api:app --reload)
 ```
 
-## Démarrer le Dashboard
+## 2. Lancer le Frontend (Node.js/React)
+
+Ouvrez un nouveau terminal :
 
 ```bash
-streamlit run app/dashboard.py
+cd frontend
+npm install
+npm run dev
 ```
 
-## Démarrer l'Agent
+L'interface web sera accessible à l'adresse indiquée par Vite (généralement `http://localhost:5173`).
 
+## 3. (Optionnel) Script de Notification Standalone
+
+Vous pouvez toujours exécuter le démon d'analyse en arrière-plan qui enverra des alertes Telegram :
 ```bash
 python main.py
 ```
