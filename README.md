@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ## Démarrer le Dashboard
 
 ```bash
-streamlit run app/dashboard.py
+python -m streamlit run app/dashboard.py
 ```
 
 ## Démarrer l'Agent
