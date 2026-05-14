@@ -3,10 +3,23 @@ import Portfolio from './components/Portfolio';
 import TradingSignals from './components/TradingSignals';
 import AIRebalancing from './components/AIRebalancing';
 import Settings from './components/Settings';
+import FinancialModule from './components/FinancialModule';
+import AssetDetails from './components/AssetDetails';
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('portfolio');
+  const [selectedAsset, setSelectedAsset] = useState(null);
+
+  // Écouter l'événement pour basculer sur la vue détaillée d'un actif
+  React.useEffect(() => {
+    const handleViewAsset = (e) => {
+      setSelectedAsset(e.detail);
+      setActiveTab('asset_details');
+    };
+    window.addEventListener('viewAsset', handleViewAsset);
+    return () => window.removeEventListener('viewAsset', handleViewAsset);
+  }, []);
 
   return (
     <div className="App" style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -33,6 +46,12 @@ function App() {
           ✨ Feature Révolutionnaire : Auto-Rééquilibrage IA
         </button>
         <button
+          onClick={() => setActiveTab('financials')}
+          style={{ fontWeight: activeTab === 'financials' ? 'bold' : 'normal', padding: '8px 12px' }}
+        >
+          🏦 Historique Financier
+        </button>
+        <button
           onClick={() => setActiveTab('settings')}
           style={{ fontWeight: activeTab === 'settings' ? 'bold' : 'normal', padding: '8px 12px' }}
         >
@@ -44,7 +63,11 @@ function App() {
         {activeTab === 'portfolio' && <Portfolio />}
         {activeTab === 'signals' && <TradingSignals />}
         {activeTab === 'rebalance' && <AIRebalancing />}
+        {activeTab === 'financials' && <FinancialModule />}
         {activeTab === 'settings' && <Settings />}
+        {activeTab === 'asset_details' && selectedAsset && (
+          <AssetDetails ticker={selectedAsset} onBack={() => setActiveTab('portfolio')} />
+        )}
       </div>
     </div>
   );

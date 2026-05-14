@@ -29,6 +29,12 @@ class PortfolioItem(BaseModel):
     quantity: float
     buyPrice: float
 
+class TransactionItem(BaseModel):
+    type: str # "BUY" or "SELL"
+    ticker: str
+    quantity: float
+    price: float
+
 class TelegramSettings(BaseModel):
     token: str
     chat_id: str
@@ -46,6 +52,42 @@ def add_portfolio_item(item: PortfolioItem):
 def remove_portfolio_item(ticker: str):
     config_manager.remove_from_portfolio(ticker)
     return {"status": "success", "portfolio": config_manager.get_portfolio()}
+
+@app.get("/api/chart/{ticker}")
+def get_chart_data(ticker: str, period: str = "1mo"):
+    try:
+        stock = yf.Ticker(ticker)
+        # Period valid strings: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+        hist = stock.history(period=period)
+
+        if hist.empty:
+            return {"error": "Aucune donnée trouvée"}
+
+        data = []
+        for date, row in hist.iterrows():
+            data.append({
+                "x": date.strftime('%Y-%m-%d'),
+                "y": [round(row['Open'], 2), round(row['High'], 2), round(row['Low'], 2), round(row['Close'], 2)],
+                "volume": int(row['Volume'])
+            })
+
+        return {"data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/transactions")
+def get_transactions():
+    return {"transactions": config_manager.get_transactions()}
+
+@app.post("/api/transactions")
+def add_transaction(item: TransactionItem):
+    transaction = config_manager.add_transaction(
+        type_action=item.type,
+        ticker=item.ticker,
+        quantity=item.quantity,
+        price=item.price
+    )
+    return {"status": "success", "transaction": transaction, "portfolio": config_manager.get_portfolio()}
 
 @app.get("/api/portfolio/live")
 def get_portfolio_live():

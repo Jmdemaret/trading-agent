@@ -79,25 +79,83 @@ class TradingAgent:
         rs = gain / loss
         data['RSI'] = 100 - (100 / (1 + rs))
 
+        # MACD
+        exp1 = data['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = data['Close'].ewm(span=26, adjust=False).mean()
+        data['MACD'] = exp1 - exp2
+        data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
+
+        # Bollinger Bands
+        data['BB_middle'] = data['Close'].rolling(window=20).mean()
+        std_dev = data['Close'].rolling(window=20).std()
+        data['BB_upper'] = data['BB_middle'] + (std_dev * 2)
+        data['BB_lower'] = data['BB_middle'] - (std_dev * 2)
+
+        # Volume trend
+        data['Volume_SMA'] = data['Volume'].rolling(window=20).mean() if 'Volume' in data.columns else 0
+
         last_price = data['Close'].iloc[-1]
         last_sma_short = data['SMA_short'].iloc[-1]
         last_sma_long = data['SMA_long'].iloc[-1]
         last_rsi = data['RSI'].iloc[-1] if not data['RSI'].empty else 50
+        last_macd = data['MACD'].iloc[-1]
+        last_macd_signal = data['Signal_Line'].iloc[-1]
+        bb_lower = data['BB_lower'].iloc[-1]
+        bb_upper = data['BB_upper'].iloc[-1]
 
-        # Signal Technique basique (Croisement de moyennes mobiles & RSI)
-        tech_signal = "HOLD"
-        rsi_reason = f"RSI: {last_rsi:.2f} (Neutre)"
+        last_volume = data['Volume'].iloc[-1] if 'Volume' in data.columns else 0
+        avg_volume = data['Volume_SMA'].iloc[-1] if 'Volume_SMA' in data.columns else 0
+        volume_status = "Fort" if last_volume > avg_volume * 1.5 else "Normal/Faible"
+
+        # Scoring System for Intuitive Advice
+        score = 0
+        details = []
 
         if last_rsi < 30:
-            tech_signal = "STRONG BUY"
-            rsi_reason = f"RSI: {last_rsi:.2f} (Survendu - Opportunité d'achat imminente !)"
+            score += 2
+            details.append("🟢 RSI Survendu (<30) : L'action est sous-évaluée, opportunité forte.")
         elif last_rsi > 70:
-            tech_signal = "STRONG SELL"
-            rsi_reason = f"RSI: {last_rsi:.2f} (Suracheté - L'action atteint un PEAK, pensez à vendre !)"
-        elif last_sma_short > last_sma_long:
+            score -= 2
+            details.append("🔴 RSI Suracheté (>70) : L'action atteint un peak, risque de correction imminente.")
+        else:
+            details.append(f"⚪ RSI Neutre ({last_rsi:.2f}).")
+
+        if last_macd > last_macd_signal:
+            score += 1
+            details.append("🟢 MACD Bullish : La tendance court-terme est à la hausse.")
+        else:
+            score -= 1
+            details.append("🔴 MACD Bearish : La tendance court-terme est à la baisse.")
+
+        if last_price <= bb_lower:
+            score += 2
+            details.append("🟢 Bandes de Bollinger : Prix touche la bande inférieure (Rebond probable).")
+        elif last_price >= bb_upper:
+            score -= 2
+            details.append("🔴 Bandes de Bollinger : Prix touche la bande supérieure (Correction probable).")
+
+        if last_sma_short > last_sma_long:
+            score += 1
+            details.append("🟢 Moyennes Mobiles : Tendance de fond haussière (Croisement Doré).")
+        else:
+            score -= 1
+            details.append("🔴 Moyennes Mobiles : Tendance de fond baissière.")
+
+        if volume_status == "Fort":
+            details.append("📈 Volume: Le mouvement actuel est soutenu par de forts volumes d'échanges.")
+
+        # Final Technical Signal based on score
+        tech_signal = "HOLD"
+        if score >= 3:
+            tech_signal = "STRONG BUY"
+        elif score > 0:
             tech_signal = "BUY"
-        elif last_sma_short < last_sma_long:
+        elif score <= -3:
+            tech_signal = "STRONG SELL"
+        elif score < 0:
             tech_signal = "SELL"
+
+        rsi_reason = " | ".join(details)
 
         # Signal Fondamental (Analyse de Sentiment)
         latest_news = self.simulate_news(ticker)

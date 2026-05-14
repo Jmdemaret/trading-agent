@@ -37,10 +37,12 @@ function Portfolio() {
     if (!newTicker || !newQuantity || !newPrice) return;
 
     try {
-      await axios.post('/api/portfolio', {
+      // Passer par les transactions pour mettre à jour l'historique ET le portefeuille
+      await axios.post('/api/transactions', {
+        type: 'BUY',
         ticker: newTicker.toUpperCase(),
         quantity: parseFloat(newQuantity),
-        buyPrice: parseFloat(newPrice)
+        price: parseFloat(newPrice)
       });
       setNewTicker(''); setNewQuantity(''); setNewPrice('');
       fetchPortfolio();
@@ -50,9 +52,15 @@ function Portfolio() {
     }
   };
 
-  const handleRemove = async (ticker) => {
+  const handleRemove = async (ticker, currentQuantity, currentPrice) => {
     try {
-      await axios.delete(`/api/portfolio/${ticker}`);
+      // Pour l'instant, on vend la totalité pour simuler la suppression
+      await axios.post('/api/transactions', {
+        type: 'SELL',
+        ticker: ticker,
+        quantity: currentQuantity,
+        price: currentPrice
+      });
       fetchPortfolio();
     } catch (err) {
       console.error(err);
@@ -62,6 +70,13 @@ function Portfolio() {
 
   if (loading && portfolio.length === 0) return <p>Chargement des données du marché en temps réel...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
+
+  // Props pour la navigation vers le détail
+  const handleViewDetails = (ticker) => {
+    // Dispatch un custom event pour que App.jsx le capte (ou passer par props)
+    const event = new CustomEvent('viewAsset', { detail: ticker });
+    window.dispatchEvent(event);
+  };
 
   return (
     <div>
@@ -103,8 +118,11 @@ function Portfolio() {
                    ${item.profit.toFixed(2)}
                 </td>
                 <td style={{ padding: '10px' }}>
-                  <button onClick={() => handleRemove(item.ticker)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '3px', cursor: 'pointer' }}>
-                    Supprimer
+                  <button onClick={() => handleViewDetails(item.ticker)} style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '3px', cursor: 'pointer', marginRight: '5px' }}>
+                    Détails & Graph
+                  </button>
+                  <button onClick={() => handleRemove(item.ticker, item.quantity, item.currentPrice)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '3px', cursor: 'pointer' }}>
+                    Vendre / Supprimer
                   </button>
                 </td>
               </tr>
